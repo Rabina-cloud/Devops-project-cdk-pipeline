@@ -19,7 +19,7 @@ export class DevopsCdkStack extends cdk.Stack {
     const dbEngine = this.node.tryGetContext("dbEngine") || "postgres";
     const dbStorage = this.node.tryGetContext("dbStorage") || 20;
     const dbInstanceType =
-      this.node.tryGetContext("dbInstanceType") || "t3.micro"; // ✅ fixed default
+      this.node.tryGetContext("dbInstanceType") || "t3.micro";
 
     /** VPC */
     const vpc = new ec2.Vpc(this, "ProjectVPC", {
@@ -62,16 +62,19 @@ export class DevopsCdkStack extends cdk.Stack {
     });
     dbSG.addIngressRule(ec2SG, ec2.Port.tcp(5432), "Allow PostgreSQL from EC2");
 
-    /** Auto Scaling Group */
-    const asg = new autoscaling.AutoScalingGroup(this, "WebASG", {
-      vpc,
+    /** Auto Scaling Group (using Launch Template) */
+    const launchTemplate = new ec2.LaunchTemplate(this, "WebLaunchTemplate", {
       instanceType: new ec2.InstanceType(instanceType),
       machineImage: ec2.MachineImage.latestAmazonLinux2023(),
-      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
-      securityGroup: ec2SG,
+      securityGroup: ec2SG, // ✅ fixed
+    });
+
+    const asg = new autoscaling.AutoScalingGroup(this, "WebASG", {
+      vpc,
       minCapacity,
       maxCapacity,
       desiredCapacity,
+      launchTemplate,
     });
 
     /** Application Load Balancer */
@@ -99,7 +102,7 @@ export class DevopsCdkStack extends cdk.Stack {
     /** RDS Database with Secrets Manager */
     const dbSecret = new secretsmanager.Secret(this, "DBSecret", {
       generateSecretString: {
-        secretStringTemplate: JSON.stringify({ username: "dbadmin" }), // ✅ no reserved username
+        secretStringTemplate: JSON.stringify({ username: "dbadmin" }),
         generateStringKey: "password",
         excludePunctuation: true,
       },
