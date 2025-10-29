@@ -97,7 +97,7 @@ export class DevopsCdkStack extends cdk.Stack {
     /** RDS Database with Secrets Manager */
     const dbSecret = new secretsmanager.Secret(this, "DBSecret", {
       generateSecretString: {
-        secretStringTemplate: JSON.stringify({ username: "admin" }),
+        secretStringTemplate: JSON.stringify({ username: "dbadmin" }), // changed here
         generateStringKey: "password",
         excludePunctuation: true,
       },
