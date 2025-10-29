@@ -19,7 +19,7 @@ export class DevopsCdkStack extends cdk.Stack {
     const dbEngine = this.node.tryGetContext("dbEngine") || "postgres";
     const dbStorage = this.node.tryGetContext("dbStorage") || 20;
     const dbInstanceType =
-      this.node.tryGetContext("dbInstanceType") || "t3.micro";
+      this.node.tryGetContext("dbInstanceType") || "t2.micro";
 
     /** VPC */
     const vpc = new ec2.Vpc(this, "ProjectVPC", {
