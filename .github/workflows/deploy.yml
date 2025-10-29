@@ -72,6 +72,11 @@ jobs:
 
       - name: CDK Deploy or Destroy
         run: |
+          ACTION=${ACTION:-deploy}       # default to deploy if empty
+          DEPLOY_ENV=${DEPLOY_ENV:-dev} # default to dev if empty
+          echo "ACTION=$ACTION"
+          echo "DEPLOY_ENV=$DEPLOY_ENV"
+
           if [ "$ACTION" = "deploy" ]; then
             npx cdk deploy DevopsCdkStack --require-approval never
           elif [ "$ACTION" = "destroy" ]; then
