@@ -8,7 +8,7 @@
     "maxCapacity": 4,
     "dbEngine": "postgres",
     "dbStorage": 20,
-    "dbInstanceType": "db.t3.micro"
+    "dbInstanceType": "t3.micro"
   },
   "content": {
     "@aws-cdk/aws-signer:signingProfileNamePassedToCfn": true,

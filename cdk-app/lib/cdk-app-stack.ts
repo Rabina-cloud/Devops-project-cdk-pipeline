@@ -19,7 +19,7 @@ export class DevopsCdkStack extends cdk.Stack {
     const dbEngine = this.node.tryGetContext("dbEngine") || "postgres";
     const dbStorage = this.node.tryGetContext("dbStorage") || 20;
     const dbInstanceType =
-      this.node.tryGetContext("dbInstanceType") || "t2.micro";
+      this.node.tryGetContext("dbInstanceType") || "t3.micro"; // ✅ fixed default
 
     /** VPC */
     const vpc = new ec2.Vpc(this, "ProjectVPC", {
@@ -99,7 +99,7 @@ export class DevopsCdkStack extends cdk.Stack {
     /** RDS Database with Secrets Manager */
     const dbSecret = new secretsmanager.Secret(this, "DBSecret", {
       generateSecretString: {
-        secretStringTemplate: JSON.stringify({ username: "dbadmin" }), // changed from 'admin'
+        secretStringTemplate: JSON.stringify({ username: "dbadmin" }), // ✅ no reserved username
         generateStringKey: "password",
         excludePunctuation: true,
       },
