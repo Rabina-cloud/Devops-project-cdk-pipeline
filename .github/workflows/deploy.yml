@@ -38,10 +38,10 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: cdk-app # <-- CDK project relative to repo root
+        working-directory: cdk-app # <-- your CDK project root
     env:
-      ACTION: ${{ github.event.inputs.action }}
-      DEPLOY_ENV: ${{ github.event.inputs.deploy_env }}
+      ACTION: ${{ github.event.inputs.action || 'deploy' }}
+      DEPLOY_ENV: ${{ github.event.inputs.deploy_env || 'dev' }}
 
     steps:
       - name: Checkout repo
@@ -64,19 +64,20 @@ jobs:
       - name: Install AWS CDK CLI globally
         run: npm install -g aws-cdk
 
-      - name: CDK Bootstrap (if needed)
+      - name: CDK Bootstrap
         run: cdk bootstrap aws://${{ secrets.AWS_ACCOUNT_ID }}/${{ secrets.AWS_REGION }}
+
+      - name: Show environment variables
+        run: |
+          echo "ACTION=$ACTION"
+          echo "DEPLOY_ENV=$DEPLOY_ENV"
 
       - name: CDK Synth
         run: npx cdk synth DevopsCdkStack
 
       - name: CDK Deploy or Destroy
         run: |
-          ACTION=${ACTION:-deploy}       # default to deploy if empty
-          DEPLOY_ENV=${DEPLOY_ENV:-dev} # default to dev if empty
-          echo "ACTION=$ACTION"
-          echo "DEPLOY_ENV=$DEPLOY_ENV"
-
+          set -e  # stop on first error
           if [ "$ACTION" = "deploy" ]; then
             npx cdk deploy DevopsCdkStack --require-approval never
           elif [ "$ACTION" = "destroy" ]; then
