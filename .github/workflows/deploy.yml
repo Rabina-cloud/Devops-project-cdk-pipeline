@@ -1,3 +1,38 @@
+name: Deploy CDK to AWS
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "CDK action to perform (deploy or destroy)"
+        required: true
+        default: "deploy"
+        type: choice
+        options:
+          - deploy
+          - destroy
+      deploy_env:
+        description: "Environment to Deploy (e.g., dev, test, prod)"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - test
+          - prod
+
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   cdk-deploy:
     runs-on: ubuntu-latest
@@ -37,11 +72,11 @@ jobs:
 
       - name: CDK Deploy or Destroy
         run: |
-          if [ "$ACTION" == "deploy" ]; then
+          if [ "$ACTION" = "deploy" ]; then
             npx cdk deploy DevopsCdkStack --require-approval never
-          elif [ "$ACTION" == "destroy" ]; then
+          elif [ "$ACTION" = "destroy" ]; then
             npx cdk destroy DevopsCdkStack --require-approval never
           else
             echo "Invalid action: $ACTION"
             exit 1
-            fi
+          fi
