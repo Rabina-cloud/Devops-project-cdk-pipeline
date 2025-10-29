@@ -1,0 +1,47 @@
+jobs:
+  cdk-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: devops-cdk-dynamic
+    env:
+      ACTION: ${{ github.event.inputs.action }}
+      DEPLOY_ENV: ${{ github.event.inputs.deploy_env }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install CDK CLI
+        run: npm install -g aws-cdk
+
+      - name: CDK Bootstrap
+        run: cdk bootstrap aws://${{ secrets.AWS_ACCOUNT_ID }}/${{ secrets.AWS_REGION }}
+
+      - name: CDK Synth
+        run: npx cdk synth DevopsCdkStack
+
+      - name: CDK Deploy or Destroy
+        run: |
+          if [ "$ACTION" == "deploy" ]; then
+            npx cdk deploy DevopsCdkStack --require-approval never
+          elif [ "$ACTION" == "destroy" ]; then
+            npx cdk destroy DevopsCdkStack --require-approval never
+          else
+            echo "Invalid action: $ACTION"
+            exit 1
+            fi
