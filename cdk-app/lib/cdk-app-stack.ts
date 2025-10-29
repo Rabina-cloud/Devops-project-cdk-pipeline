@@ -12,14 +12,15 @@ export class DevopsCdkStack extends cdk.Stack {
 
     /** Context parameters */
     const vpcCidr = this.node.tryGetContext("vpcCidr") || "10.20.0.0/16";
-    const instanceType = this.node.tryGetContext("instanceType") || "t2.micro";
+    const instanceTypeString =
+      this.node.tryGetContext("instanceType") || "t2.micro";
     const desiredCapacity = this.node.tryGetContext("desiredCapacity") || 2;
     const minCapacity = this.node.tryGetContext("minCapacity") || 1;
     const maxCapacity = this.node.tryGetContext("maxCapacity") || 4;
     const dbEngine = this.node.tryGetContext("dbEngine") || "postgres";
     const dbStorage = this.node.tryGetContext("dbStorage") || 20;
-    const dbInstanceType =
-      this.node.tryGetContext("dbInstanceType") || "db.t3.micro";
+    const dbInstanceTypeString =
+      this.node.tryGetContext("dbInstanceType") || "t3.micro";
 
     /** VPC */
     const vpc = new ec2.Vpc(this, "ProjectVPC", {
@@ -28,13 +29,13 @@ export class DevopsCdkStack extends cdk.Stack {
       natGateways: 1,
       subnetConfiguration: [
         {
-          cidrMask: 24,
           name: "PublicSubnet",
+          cidrMask: 24,
           subnetType: ec2.SubnetType.PUBLIC,
         },
         {
-          cidrMask: 24,
           name: "PrivateSubnet",
+          cidrMask: 24,
           subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
         },
       ],
@@ -62,10 +63,10 @@ export class DevopsCdkStack extends cdk.Stack {
     });
     dbSG.addIngressRule(ec2SG, ec2.Port.tcp(5432), "Allow PostgreSQL from EC2");
 
-    /** Auto Scaling Group with Launch Template */
+    /** Auto Scaling Group */
     const asg = new autoscaling.AutoScalingGroup(this, "WebASG", {
       vpc,
-      instanceType: new ec2.InstanceType(instanceType),
+      instanceType: new ec2.InstanceType(instanceTypeString),
       machineImage: ec2.MachineImage.latestAmazonLinux2023(),
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
       securityGroup: ec2SG,
@@ -90,13 +91,10 @@ export class DevopsCdkStack extends cdk.Stack {
     listener.addTargets("TargetGroup", {
       port: 80,
       targets: [asg],
-      healthCheck: {
-        path: "/health",
-        interval: cdk.Duration.seconds(60),
-      },
+      healthCheck: { path: "/health", interval: cdk.Duration.seconds(60) },
     });
 
-    /** RDS Database */
+    /** RDS Database with Secrets Manager */
     const dbSecret = new secretsmanager.Secret(this, "DBSecret", {
       generateSecretString: {
         secretStringTemplate: JSON.stringify({ username: "admin" }),
@@ -114,6 +112,25 @@ export class DevopsCdkStack extends cdk.Stack {
             version: rds.PostgresEngineVersion.VER_15,
           });
 
+    // Correct mapping for RDS instance type
+    const dbInstanceTypeMap: Record<string, ec2.InstanceType> = {
+      "t3.micro": ec2.InstanceType.of(
+        ec2.InstanceClass.T3,
+        ec2.InstanceSize.MICRO
+      ),
+      "t3.small": ec2.InstanceType.of(
+        ec2.InstanceClass.T3,
+        ec2.InstanceSize.SMALL
+      ),
+      "t2.micro": ec2.InstanceType.of(
+        ec2.InstanceClass.T2,
+        ec2.InstanceSize.MICRO
+      ),
+    };
+    const dbInstanceType =
+      dbInstanceTypeMap[dbInstanceTypeString] ||
+      ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO);
+
     const db = new rds.DatabaseInstance(this, "Database", {
       engine: rdsEngine,
       vpc,
@@ -121,7 +138,7 @@ export class DevopsCdkStack extends cdk.Stack {
       credentials: rds.Credentials.fromSecret(dbSecret),
       multiAz: false,
       allocatedStorage: dbStorage,
-      instanceType: new ec2.InstanceType(dbInstanceType),
+      instanceType: dbInstanceType,
       securityGroups: [dbSG],
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       deletionProtection: false,
